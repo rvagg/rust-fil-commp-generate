@@ -6,9 +6,9 @@ use std::env;
 use std::cmp;
 use std::io;
 use std::convert::TryFrom;
-extern crate filecoin_proofs;
+
 use filecoin_proofs::{ UnpaddedBytesAmount, SectorSize, generate_piece_commitment };
-extern crate hex;
+use hex;
 
 // use a file as an io::Reader but pad out extra length at the end with zeros up
 // to the padded size
