@@ -39,11 +39,7 @@ impl io::Read for PadReader {
             */
             Ok(cs)
         } else {
-            let frb = self.file.read(buf);
-            if !frb.is_ok() {
-                return Err(frb.unwrap_err());
-            }
-            let cs = frb.unwrap();
+            let cs = self.file.read(buf)?;
             self.pos = self.pos + cs;
             Ok(cs)
         }
