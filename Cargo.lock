@@ -361,6 +361,7 @@ name = "commp"
 version = "0.0.0"
 dependencies = [
  "filecoin-proofs",
+ "hex",
 ]
 
 [[package]]
