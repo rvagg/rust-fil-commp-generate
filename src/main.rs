@@ -84,7 +84,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //let commitment = info.commitment;
     //let piece_size = info.size;
 
-    let mut data = Vec::new();
+    // Grow the vector big enough so that it doesn't grow it automatically
+    let mut data = Vec::with_capacity((padded_file_size as f64 * 1.01) as usize);
     let mut temp_piece_file = Cursor::new(&mut data);
     // send the source through the preprocessor, writing output to temp file
     let piece_size =
