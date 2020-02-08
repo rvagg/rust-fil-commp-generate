@@ -1,5 +1,6 @@
 // Generate a Filecoin CommP for a file
-// Usage: commp <path to file>
+// Usage: commp <path to file> [fp]
+// specify "fp" to run through filecoin_proofs
 
 use std::cmp;
 use std::convert::TryFrom;
@@ -13,6 +14,7 @@ use filecoin_proofs::{
     generate_piece_commitment, PaddedBytesAmount, SectorSize, UnpaddedBytesAmount,
 };
 use hex;
+use storage_proofs::fr32::Fr32Ary;
 use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
 
 use std::io::{Cursor, Seek, SeekFrom};
@@ -78,23 +80,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         pos: 0,
     };
 
-    //// Old code
-    //let info = generate_piece_commitment(pad_reader, UnpaddedBytesAmount(padded_file_size))
-    //   .expect("failed to generate piece commitment");
-    //let commitment = info.commitment;
-    //let piece_size = info.size;
+    let piece_size: UnpaddedBytesAmount;
+    let commitment: Fr32Ary;
 
-    // Grow the vector big enough so that it doesn't grow it automatically
-    let mut data = Vec::with_capacity((padded_file_size as f64 * 1.01) as usize);
-    let mut temp_piece_file = Cursor::new(&mut data);
-    // send the source through the preprocessor, writing output to temp file
-    let piece_size =
-       UnpaddedBytesAmount(write_padded(&mut pad_reader, &mut temp_piece_file)? as u64);
-    temp_piece_file.seek(SeekFrom::Start(0))?;
-    let commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
-       &mut temp_piece_file,
-       PaddedBytesAmount::from(piece_size).into(),
-    )?;
+    if args.len() > 2 && &args[2] == "fp" {
+        print!("Using filecoin_proofs method on {}\n", args[1]);
+        let info = generate_piece_commitment(pad_reader, UnpaddedBytesAmount(padded_file_size))
+            .expect("failed to generate piece commitment");
+        commitment = info.commitment;
+        piece_size = info.size;
+    } else {
+        print!("Using storage_proofs method on {}\n", args[1]);
+        // Grow the vector big enough so that it doesn't grow it automatically
+        let mut data = Vec::with_capacity((padded_file_size as f64 * 1.01) as usize);
+        let mut temp_piece_file = Cursor::new(&mut data);
+
+        // send the source through the preprocessor, writing output to temp file
+        piece_size =
+            UnpaddedBytesAmount(write_padded(&mut pad_reader, &mut temp_piece_file)? as u64);
+        temp_piece_file.seek(SeekFrom::Start(0))?;
+        commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
+            &mut temp_piece_file,
+            PaddedBytesAmount::from(piece_size).into(),
+        )?;
+    }
 
     print!(
         "{} Size: {:?}, Padded: {:?}, CommP {}\n",
