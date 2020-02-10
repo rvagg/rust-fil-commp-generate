@@ -10,6 +10,7 @@ use std::io;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 
 use anyhow::ensure;
+use bytesize;
 use hex;
 
 use filecoin_proofs::constants::DefaultPieceHasher;
@@ -165,10 +166,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     print!(
-        "{}\n\tSize: {:?}\n\tPadded: {:?}\n\tCommP {}\n",
+        "{}\n\tSize: {}\n\tPadded Size: {}\n\tPiece Size: {}\n\tCommP {}\n",
         filename,
-        u64::from(piece_size),
-        padded_file_size,
+        bytesize::ByteSize::b(file_size),
+        bytesize::ByteSize::b(padded_file_size),
+        bytesize::ByteSize::b(u64::from(piece_size)),
         hex::encode(commitment)
     );
 
