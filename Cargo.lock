@@ -360,8 +360,10 @@ dependencies = [
 name = "commp"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "filecoin-proofs",
  "hex",
+ "merkletree",
  "storage-proofs",
 ]
 

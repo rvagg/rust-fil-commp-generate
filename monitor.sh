@@ -13,6 +13,7 @@ TMPDIR=$tmpfs $cmd &
 
 cmdpid=$!
 
+sleep 0.2
 peakmem=0
 peakdisk=0
 while kill -0 $cmdpid >& /dev/null

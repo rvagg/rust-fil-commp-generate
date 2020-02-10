@@ -7,17 +7,23 @@ use std::convert::TryFrom;
 use std::env;
 use std::fs::File;
 use std::io;
+use std::io::{Cursor, Read, Seek, SeekFrom};
+
+use anyhow::ensure;
+use hex;
 
 use filecoin_proofs::constants::DefaultPieceHasher;
 use filecoin_proofs::fr32::write_padded;
 use filecoin_proofs::{
     generate_piece_commitment, PaddedBytesAmount, SectorSize, UnpaddedBytesAmount,
 };
-use hex;
 use storage_proofs::fr32::Fr32Ary;
+use storage_proofs::hasher::{Domain, Hasher};
 use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
+use storage_proofs::util::NODE_SIZE;
 
-use std::io::{Cursor, Seek, SeekFrom};
+type VecStore<E> = merkletree::store::VecStore<E>;
+pub type MerkleTree<T, A> = merkletree::merkle::MerkleTree<T, A, VecStore<T>>;
 
 // use a file as an io::Reader but pad out extra length at the end with zeros up
 // to the padded size
@@ -67,9 +73,44 @@ fn padded_size(size: u64) -> u64 {
     return u64::from(UnpaddedBytesAmount::from(SectorSize(1 << (logv + 1))));
 }
 
+// from rust-fil-proofs/src/storage_proofs/pieces.rs
+fn local_generate_piece_commitment_bytes_from_source<H: Hasher>(
+    source: &mut dyn Read,
+    padded_piece_size: usize,
+) -> anyhow::Result<Fr32Ary> {
+    ensure!(padded_piece_size > 32, "piece is too small");
+    ensure!(padded_piece_size % 32 == 0, "piece is not valid size");
+
+    let mut buf = [0; NODE_SIZE];
+    use std::io::BufReader;
+
+    let mut reader = BufReader::new(source);
+
+    let parts = (padded_piece_size as f64 / NODE_SIZE as f64).ceil() as usize;
+
+    let tree = MerkleTree::<H::Domain, H::Function>::try_from_iter((0..parts).map(|_| {
+        reader.read_exact(&mut buf)?;
+        <H::Domain as Domain>::try_from_bytes(&buf)
+    }))?;
+
+    let mut comm_p_bytes = [0; NODE_SIZE];
+    let comm_p = tree.root();
+    comm_p.write_bytes(&mut comm_p_bytes)?;
+
+    Ok(comm_p_bytes)
+}
+
+fn usage() {
+    print!("Usage: commp [-fp|-sp|-spl] <file>\n");
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
-    let filename = &args[1];
+    if args.len() < 3 {
+        usage();
+        return Err(From::from("Not enough arguments".to_string()));
+    }
+    let filename = &args[2];
     let file = File::open(filename).expect("Unable to open file");
     let file_size = file.metadata().unwrap().len();
     let padded_file_size = padded_size(file_size);
@@ -83,14 +124,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let piece_size: UnpaddedBytesAmount;
     let commitment: Fr32Ary;
 
-    if args.len() > 2 && &args[2] == "fp" {
-        print!("Using filecoin_proofs method on {}\n", args[1]);
+    if &args[1] == "-fp" {
+        print!("Using filecoin_proofs method on {}\n", filename);
         let info = generate_piece_commitment(pad_reader, UnpaddedBytesAmount(padded_file_size))
             .expect("failed to generate piece commitment");
         commitment = info.commitment;
         piece_size = info.size;
-    } else {
-        print!("Using storage_proofs method on {}\n", args[1]);
+    } else if &args[1] == "-sp" || &args[1] == "-spl" {
+        if &args[1] == "-sp" {
+            print!("Using storage_proofs method on {}\n", filename);
+        } else if &args[1] == "-spl" {
+            print!(
+                "Using storage_proofs local (reimplemented) method on {}\n",
+                filename
+            );
+        }
         // Grow the vector big enough so that it doesn't grow it automatically
         let mut data = Vec::with_capacity((padded_file_size as f64 * 1.01) as usize);
         let mut temp_piece_file = Cursor::new(&mut data);
@@ -99,16 +147,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         piece_size =
             UnpaddedBytesAmount(write_padded(&mut pad_reader, &mut temp_piece_file)? as u64);
         temp_piece_file.seek(SeekFrom::Start(0))?;
-        commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
-            &mut temp_piece_file,
-            PaddedBytesAmount::from(piece_size).into(),
-        )?;
+        if &args[1] == "-sp" {
+            commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
+                &mut temp_piece_file,
+                PaddedBytesAmount::from(piece_size).into(),
+            )?;
+        } else {
+            // -spl
+            commitment = local_generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
+                &mut temp_piece_file,
+                PaddedBytesAmount::from(piece_size).into(),
+            )?;
+        }
+    } else {
+        usage();
+        return Err(From::from("Supply one of -fp (filecoin-proofs), -sp (storage-proofs) or -spl (storage-proofs local / reimplemented)".to_string()));
     }
 
     print!(
-        "{} Size: {:?}, Padded: {:?}, CommP {}\n",
-        args[1],
-        piece_size,
+        "{}\n\tSize: {:?}\n\tPadded: {:?}\n\tCommP {}\n",
+        filename,
+        u64::from(piece_size),
         padded_file_size,
         hex::encode(commitment)
     );

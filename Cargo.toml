@@ -6,4 +6,6 @@ edition = "2018"
 [dependencies]
 filecoin-proofs = { path = "../rust-fil-proofs/filecoin-proofs" }
 storage-proofs = { path = "../rust-fil-proofs/storage-proofs" }
-hex = { version = "0.4.0" }
+hex = "0.4.0"
+merkletree = "0.14.0"
+anyhow = "1.0.23"
