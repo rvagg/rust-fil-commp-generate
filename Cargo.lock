@@ -281,6 +281,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bytesize"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "716960a18f978640f25101b5cbf1c6f6b0d3192fab36a2d98ca96f0ecbe41010"
+
+[[package]]
 name = "c2-chacha"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -360,8 +366,11 @@ dependencies = [
 name = "commp"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "bytesize",
  "filecoin-proofs",
  "hex",
+ "merkletree",
  "storage-proofs",
 ]
 
