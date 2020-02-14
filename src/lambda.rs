@@ -3,15 +3,10 @@ mod commp;
 use std::error::Error;
 use std::str::FromStr;
 
-#[macro_use]
-extern crate lambda_runtime as lambda;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate log;
-extern crate simple_logger;
-
-use lambda::error::HandlerError;
+use lambda_runtime::error::HandlerError;
+use lambda_runtime::{lambda, Context};
+use log::info;
+use serde_derive::{Deserialize, Serialize};
 
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::region::Region;
@@ -40,16 +35,12 @@ struct CommPResponse {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    simple_logger::init_with_level(log::Level::Info)?;
+    flexi_logger::Logger::with_str("info").start().unwrap();
     lambda!(commp_handler);
-
     Ok(())
 }
 
-fn commp_handler(
-    request: CommPRequest,
-    _c: lambda::Context,
-) -> Result<CommPResponse, HandlerError> {
+fn commp_handler(request: CommPRequest, _c: Context) -> Result<CommPResponse, HandlerError> {
     info!(
         "Received request: {}/{}/{}",
         request.region, request.bucket, request.key
@@ -80,7 +71,7 @@ fn commp_handler(
 
     let mut stream = result.body.unwrap().into_blocking_read();
 
-    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size).unwrap();
+    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size, true).unwrap();
 
     Ok(CommPResponse {
         region: request.region,
