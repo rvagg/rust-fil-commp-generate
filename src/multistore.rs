@@ -10,7 +10,7 @@ use merkletree::store::{DiskStore, Store, StoreConfig, VecStore};
 #[derive(Debug)]
 pub struct MultiStore<E: Element>(DiskStore<E>, VecStore<E>);
 
-const DISK_MAX: usize = 262144 * 48;
+const DISK_MAX: usize = 262144 * 48; // ~375Mb
 
 impl<E: Element> Store<E> for MultiStore<E> {
     fn new_with_config(size: usize, _config: StoreConfig) -> Result<Self> {
