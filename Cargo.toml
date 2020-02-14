@@ -2,11 +2,28 @@
 name = "commp"
 version = "0.0.0"
 edition = "2018"
+autobins = false
 
 [dependencies]
 filecoin-proofs = { path = "../rust-fil-proofs/filecoin-proofs" }
 storage-proofs = { path = "../rust-fil-proofs/storage-proofs" }
-hex = "0.4.0"
-merkletree = "0.14.0"
+hex = "0.4.1"
+merkletree = "0.15.2"
 anyhow = "1.0.23"
 bytesize = "1.0.0"
+lambda_runtime = "0.2.1"
+serde = "^1"
+serde_json = "^1"
+serde_derive = "^1"
+log = "^0.4"
+simple_logger = "^1"
+rusoto_core = "0.42.0"
+rusoto_s3 = "0.42.0"
+
+[[bin]]
+name = "commp"
+path = "src/main.rs"
+
+[[bin]]
+name = "bootstrap"
+path = "src/lambda.rs"
