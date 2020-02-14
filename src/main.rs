@@ -12,12 +12,15 @@ extern crate log;
 
 use bytesize;
 use hex;
+extern crate simple_logger;
 
 fn usage() {
     print!("Usage: commp [-fp|-sp|-spl] <file>\n");
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    simple_logger::init_with_level(log::Level::Info)?;
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         usage();
@@ -34,7 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     } else if &args[1] == "-sp" {
         commp = commp::generate_commp_storage_proofs(&mut file, file_size).unwrap();
     } else if &args[1] == "-spl" {
-        commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size).unwrap();
+        commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, false).unwrap();
+    } else if &args[1] == "-splm" {
+        commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, true).unwrap();
     } else {
         usage();
         return Err(From::from("Supply one of -fp (filecoin-proofs), -sp (storage-proofs) or -spl (storage-proofs local / reimplemented)".to_string()));

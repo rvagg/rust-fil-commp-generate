@@ -80,7 +80,7 @@ fn commp_handler(
 
     let mut stream = result.body.unwrap().into_blocking_read();
 
-    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size).unwrap();
+    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size, true).unwrap();
 
     Ok(CommPResponse {
         region: request.region,
