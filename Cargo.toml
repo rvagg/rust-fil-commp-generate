@@ -2,7 +2,6 @@
 name = "commp"
 version = "0.0.0"
 edition = "2018"
-autobins = false
 
 [dependencies]
 filecoin-proofs = { path = "../rust-fil-proofs/filecoin-proofs" }
@@ -19,11 +18,3 @@ log = "^0.4"
 flexi_logger = "0.14.8"
 rusoto_core = "0.42.0"
 rusoto_s3 = "0.42.0"
-
-[[bin]]
-name = "commp"
-path = "src/main.rs"
-
-[[bin]]
-name = "bootstrap"
-path = "src/lambda.rs"

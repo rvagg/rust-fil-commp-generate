@@ -2,8 +2,6 @@
 // Usage: commp <path to file> [fp]
 // specify "fp" to run through filecoin_proofs
 
-mod commp;
-
 use std::env;
 use std::fs::File;
 
