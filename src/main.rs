@@ -7,19 +7,16 @@ mod commp;
 use std::env;
 use std::fs::File;
 
-#[macro_use]
-extern crate log;
-
 use bytesize;
+use flexi_logger::Logger;
 use hex;
-extern crate simple_logger;
 
 fn usage() {
     print!("Usage: commp [-fp|-sp|-spl] <file>\n");
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    simple_logger::init_with_level(log::Level::Info)?;
+    Logger::with_str("info").start().unwrap();
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -27,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err(From::from("Not enough arguments".to_string()));
     }
     let filename = &args[2];
-    let mut file = File::open(filename).expect("Unable to open file");
+    let mut file = File::open(filename)?;
     let file_size = file.metadata().unwrap().len();
 
     let commp: commp::CommP;

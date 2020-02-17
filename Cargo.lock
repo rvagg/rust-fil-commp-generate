@@ -376,6 +376,7 @@ dependencies = [
  "anyhow",
  "bytesize",
  "filecoin-proofs",
+ "flexi_logger",
  "hex",
  "lambda_runtime",
  "log",
@@ -385,7 +386,6 @@ dependencies = [
  "serde 1.0.104",
  "serde_derive",
  "serde_json",
- "simple_logger",
  "storage-proofs",
 ]
 
@@ -2451,19 +2451,6 @@ checksum = "94f478ede9f64724c5d173d7bb56099ec3e2d9fc2774aac65d34b8b890405f41"
 dependencies = [
  "arc-swap",
  "libc",
-]
-
-[[package]]
-name = "simple_logger"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea8a5d6557565318b2bbf1d349512b7e4b4b43fd1e759dec8acd7bc0e9b1256b"
-dependencies = [
- "atty",
- "chrono",
- "colored",
- "log",
- "winapi 0.3.8",
 ]
 
 [[package]]

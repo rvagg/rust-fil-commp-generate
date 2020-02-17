@@ -8,7 +8,10 @@ use merkletree::merkle::Element;
 use merkletree::store::{DiskStore, Store, StoreConfig, VecStore};
 
 #[derive(Debug)]
-pub struct MultiStore<E: Element>(DiskStore<E>, VecStore<E>);
+pub struct MultiStore<E: Element> {
+    disk: DiskStore<E>,
+    mem: VecStore<E>,
+}
 
 const DISK_MAX: usize = 262144 * 48; // ~375Mb
 
@@ -18,25 +21,25 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn new(size: usize) -> Result<Self> {
-        Ok(MultiStore(
-            DiskStore::new(DISK_MAX).unwrap(),
-            VecStore::new(size - DISK_MAX).unwrap(),
-        ))
+        Ok(MultiStore {
+            disk: DiskStore::new(DISK_MAX).unwrap(),
+            mem: VecStore::new(size - DISK_MAX).unwrap(),
+        })
     }
 
     fn write_at(&mut self, el: E, index: usize) -> Result<()> {
         if index > DISK_MAX {
-            self.1.write_at(el, index - DISK_MAX)
+            self.mem.write_at(el, index - DISK_MAX)
         } else {
-            self.0.write_at(el, index)
+            self.disk.write_at(el, index)
         }
     }
 
     fn copy_from_slice(&mut self, buf: &[u8], start: usize) -> Result<()> {
         if start + (buf.len() / E::byte_len()) > DISK_MAX {
-            self.1.copy_from_slice(buf, start - DISK_MAX)
+            self.mem.copy_from_slice(buf, start - DISK_MAX)
         } else {
-            self.0.copy_from_slice(buf, start)
+            self.disk.copy_from_slice(buf, start)
         }
     }
 
@@ -54,17 +57,17 @@ impl<E: Element> Store<E> for MultiStore<E> {
 
     fn read_at(&self, index: usize) -> Result<E> {
         if index > DISK_MAX {
-            self.1.read_at(index - DISK_MAX)
+            self.mem.read_at(index - DISK_MAX)
         } else {
-            self.0.read_at(index)
+            self.disk.read_at(index)
         }
     }
 
     fn read_into(&self, index: usize, buf: &mut [u8]) -> Result<()> {
         if index > DISK_MAX {
-            self.1.read_into(index - DISK_MAX, buf)
+            self.mem.read_into(index - DISK_MAX, buf)
         } else {
-            self.0.read_into(index, buf)
+            self.disk.read_into(index, buf)
         }
     }
 
@@ -74,35 +77,36 @@ impl<E: Element> Store<E> for MultiStore<E> {
 
     fn read_range(&self, r: Range<usize>) -> Result<Vec<E>> {
         if r.start > DISK_MAX {
+            // entire range is in mem
             let nr = Range {
                 start: r.start - DISK_MAX,
                 end: r.end - DISK_MAX,
             };
-            self.1.read_range(nr)
+            self.mem.read_range(nr)
+        } else if r.end > DISK_MAX {
+            // split across disk and mem
+            let nrdisk = Range {
+                start: r.start,
+                end: DISK_MAX,
+            };
+            let nrmem = Range {
+                start: 0,
+                end: r.end - DISK_MAX,
+            };
+            let rdisk = self.mem.read_range(nrdisk).unwrap();
+            let rmem = self.mem.read_range(nrmem).unwrap();
+            let mut rv = Vec::with_capacity(r.end - r.start);
+            rv.extend(rdisk);
+            rv.extend(rmem);
+            Ok(rv)
         } else {
-            if r.end > DISK_MAX {
-                let nr0 = Range {
-                    start: r.start,
-                    end: DISK_MAX,
-                };
-                let nr1 = Range {
-                    start: 0,
-                    end: r.end - DISK_MAX,
-                };
-                let r0 = self.1.read_range(nr0).unwrap();
-                let r1 = self.1.read_range(nr1).unwrap();
-                let mut rv = Vec::with_capacity(r.end - r.start);
-                rv.extend(r0);
-                rv.extend(r1);
-                Ok(rv)
-            } else {
-                self.0.read_range(r)
-            }
+            // entire range is in disk
+            self.disk.read_range(r)
         }
     }
 
     fn len(&self) -> usize {
-        self.0.len() + self.1.len()
+        self.disk.len() + self.mem.len()
     }
 
     fn loaded_from_disk(&self) -> bool {
@@ -118,14 +122,14 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn is_empty(&self) -> bool {
-        self.0.is_empty() && self.1.is_empty()
+        self.disk.is_empty() && self.mem.is_empty()
     }
 
     fn push(&mut self, el: E) -> Result<()> {
-        if self.0.len() > DISK_MAX {
-            self.1.push(el)
+        if self.disk.len() > DISK_MAX {
+            self.mem.push(el)
         } else {
-            self.0.push(el)
+            self.disk.push(el)
         }
     }
 }

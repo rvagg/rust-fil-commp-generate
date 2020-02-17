@@ -7,11 +7,8 @@ use std::str::FromStr;
 extern crate lambda_runtime as lambda;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate log;
-extern crate simple_logger;
-
 use lambda::error::HandlerError;
+use log::info;
 
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::region::Region;
@@ -40,9 +37,8 @@ struct CommPResponse {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    simple_logger::init_with_level(log::Level::Info)?;
+    flexi_logger::Logger::with_str("info").start().unwrap();
     lambda!(commp_handler);
-
     Ok(())
 }
 

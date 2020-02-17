@@ -1,7 +1,8 @@
 use std::cmp;
 use std::convert::TryFrom;
+use std::fs::File;
 use std::io;
-use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
+use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
 
 use filecoin_proofs::constants::DefaultPieceHasher;
 use filecoin_proofs::fr32::write_padded;
@@ -12,6 +13,10 @@ use storage_proofs::fr32::Fr32Ary;
 use storage_proofs::hasher::{Domain, Hasher};
 use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
 use storage_proofs::util::NODE_SIZE;
+
+use log::info;
+
+use anyhow::{Context, Result};
 
 #[path = "multistore.rs"]
 mod multistore;
@@ -29,10 +34,7 @@ pub struct CommP {
 
 // use a file as an io::Reader but pad out extra length at the end with zeros up
 // to the padded size
-struct PadReader<R>
-where
-    R: io::Read,
-{
+struct PadReader<R: io::Read> {
     size: usize,
     padsize: usize,
     pos: usize,
@@ -41,28 +43,16 @@ where
 
 impl<R: io::Read> io::Read for PadReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        /*
-        if self.pos == self.size {
-          print!("reached file size, now padding ...")
-        }
-        */
-        if self.pos >= self.size {
+        let cs = if self.pos >= self.size {
             for i in 0..buf.len() {
                 buf[i] = 0;
             }
-            let cs = cmp::min(self.padsize - self.pos, buf.len());
-            self.pos = self.pos + cs;
-            /*
-            if cs < buf.len() {
-              print!("done with file ...")
-            }
-            */
-            Ok(cs)
+            cmp::min(self.padsize - self.pos, buf.len())
         } else {
-            let cs = self.inp.read(buf)?;
-            self.pos = self.pos + cs;
-            Ok(cs)
-        }
+            self.inp.read(buf)?
+        };
+        self.pos = self.pos + cs;
+        Ok(cs)
     }
 }
 
@@ -70,22 +60,20 @@ impl<R: io::Read> io::Read for PadReader<R> {
 // figure out how big this piece will be when padded
 fn padded_size(size: u64) -> u64 {
     let logv = 64 - size.leading_zeros();
-    let sect_size = (1 as u64) << logv;
+    let sect_size = (1u64) << logv;
     let bound = u64::from(UnpaddedBytesAmount::from(SectorSize(sect_size)));
     if size <= bound {
-        return bound;
+        bound
+    } else {
+        u64::from(UnpaddedBytesAmount::from(SectorSize(1 << (logv + 1))))
     }
-    return u64::from(UnpaddedBytesAmount::from(SectorSize(1 << (logv + 1))));
 }
 
 // reimplemented from rust-fil-proofs/src/storage_proofs/pieces.rs
-fn local_generate_piece_commitment_bytes_from_source<H: Hasher, R: Sized>(
+fn local_generate_piece_commitment_bytes_from_source<H: Hasher, R: Sized + io::Read>(
     source: &mut R,
     padded_piece_size: usize,
-) -> anyhow::Result<Fr32Ary>
-where
-    R: io::Read,
-{
+) -> anyhow::Result<Fr32Ary> {
     let mut buf = [0; NODE_SIZE];
     let mut reader = BufReader::new(source);
     let parts = (padded_piece_size as f64 / NODE_SIZE as f64).ceil() as usize;
@@ -101,7 +89,7 @@ where
     let comm_p = tree.root();
     comm_p
         .write_bytes(&mut comm_p_bytes)
-        .expect("borked at extracting commp bytes");
+        .context("borked at extracting commp bytes")?;
 
     info!("CommP from merkle root: {:?}", comm_p_bytes);
     Ok(comm_p_bytes)
@@ -109,13 +97,10 @@ where
 
 // same as local_generate_piece_commitment_bytes_from_source but uses a custom MerkleTree
 // caching store from multistore.rs
-fn local_multistore_generate_piece_commitment_bytes_from_source<H: Hasher, R: Sized>(
+fn local_multistore_generate_piece_commitment_bytes_from_source<H: Hasher, R: Sized + io::Read>(
     source: &mut R,
     padded_piece_size: usize,
-) -> anyhow::Result<Fr32Ary>
-where
-    R: io::Read,
-{
+) -> anyhow::Result<Fr32Ary> {
     let mut buf = [0; NODE_SIZE];
     let mut reader = BufReader::new(source);
     let parts = (padded_piece_size as f64 / NODE_SIZE as f64).ceil() as usize;
@@ -132,16 +117,13 @@ where
     let comm_p = tree.root();
     comm_p
         .write_bytes(&mut comm_p_bytes)
-        .expect("borked at extracting commp bytes");
+        .context("borked at extracting commp bytes")?;
 
     info!("CommP from merkle root: {:?}", comm_p_bytes);
     Ok(comm_p_bytes)
 }
 
-fn padded<R: Sized>(inp: &mut R, size: u64) -> PadReader<&mut R>
-where
-    R: io::Read,
-{
+fn padded<R: Sized + io::Read>(inp: &mut R, size: u64) -> PadReader<&mut R> {
     let padded_size = padded_size(size);
 
     let pad_reader = PadReader {
@@ -151,17 +133,14 @@ where
         inp: inp,
     };
 
-    return pad_reader;
+    pad_reader
 }
 
 #[allow(dead_code)]
-pub fn generate_commp_filecoin_proofs<R: Sized>(
+pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
-) -> Result<CommP, std::io::Error>
-where
-    R: io::Read,
-{
+) -> Result<CommP, std::io::Error> {
     let pad_reader = padded(inp, size);
     let padded_size = pad_reader.padsize;
 
@@ -176,13 +155,10 @@ where
 }
 
 #[allow(dead_code)]
-pub fn generate_commp_storage_proofs<R: Sized>(
+pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
-) -> Result<CommP, std::io::Error>
-where
-    R: io::Read,
-{
+) -> Result<CommP, std::io::Error> {
     let pad_reader = padded(inp, size);
     let padded_size = pad_reader.padsize;
 
@@ -206,14 +182,11 @@ where
     })
 }
 
-pub fn generate_commp_storage_proofs_mem<R: Sized>(
+pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
     multistore: bool,
-) -> Result<CommP, std::io::Error>
-where
-    R: io::Read,
-{
+) -> Result<CommP, std::io::Error> {
     let pad_reader = padded(inp, size);
     let padded_size = pad_reader.padsize;
 
@@ -231,27 +204,26 @@ where
         UnpaddedBytesAmount(write_padded(pad_reader, &mut temp_piece_file).unwrap() as u64);
     info!("Piece size = {:?}", piece_size);
     temp_piece_file.seek(SeekFrom::Start(0))?;
-    let commitment: Fr32Ary;
 
-    if multistore {
-        commitment = local_multistore_generate_piece_commitment_bytes_from_source::<
+    let commitment = if multistore {
+        local_multistore_generate_piece_commitment_bytes_from_source::<
             DefaultPieceHasher,
             Cursor<&mut Vec<u8>>,
         >(
             &mut temp_piece_file,
             PaddedBytesAmount::from(piece_size).into(),
         )
-        .unwrap();
+        .unwrap()
     } else {
-        commitment = local_generate_piece_commitment_bytes_from_source::<
+        local_generate_piece_commitment_bytes_from_source::<
             DefaultPieceHasher,
             Cursor<&mut Vec<u8>>,
         >(
             &mut temp_piece_file,
             PaddedBytesAmount::from(piece_size).into(),
         )
-        .unwrap();
-    }
+        .unwrap()
+    };
 
     Ok(CommP {
         padded_size: padded_size as u64,
