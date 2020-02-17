@@ -3,11 +3,9 @@ mod commp;
 use std::error::Error;
 use std::str::FromStr;
 
-#[macro_use]
-extern crate lambda_runtime as lambda;
-#[macro_use]
-extern crate serde_derive;
-use lambda::error::HandlerError;
+use lambda_runtime::error::HandlerError;
+use lambda_runtime::{lambda, Context};
+use serde_derive::{Deserialize, Serialize};
 use log::info;
 
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
@@ -42,10 +40,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn commp_handler(
-    request: CommPRequest,
-    _c: lambda::Context,
-) -> Result<CommPResponse, HandlerError> {
+fn commp_handler(request: CommPRequest, _c: Context) -> Result<CommPResponse, HandlerError> {
     info!(
         "Received request: {}/{}/{}",
         request.region, request.bucket, request.key
