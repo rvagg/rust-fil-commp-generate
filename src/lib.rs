@@ -18,7 +18,6 @@ use log::info;
 
 use anyhow::{Context, Result};
 
-#[path = "multistore.rs"]
 mod multistore;
 
 type VecStore<E> = merkletree::store::VecStore<E>;
