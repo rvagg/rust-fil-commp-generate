@@ -7,6 +7,8 @@ use anyhow::Result;
 use merkletree::merkle::Element;
 use merkletree::store::{DiskStore, Store, StoreConfig, VecStore};
 
+use log::info;
+
 #[derive(Debug)]
 pub struct MultiStore<E: Element> {
     disk: DiskStore<E>,
@@ -28,7 +30,8 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn write_at(&mut self, el: E, index: usize) -> Result<()> {
-        if index > DISK_MAX {
+        if index >= DISK_MAX {
+            // index, so >=
             self.mem.write_at(el, index - DISK_MAX)
         } else {
             self.disk.write_at(el, index)
@@ -36,9 +39,26 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn copy_from_slice(&mut self, buf: &[u8], start: usize) -> Result<()> {
-        if start + (buf.len() / E::byte_len()) > DISK_MAX {
+        if start >= DISK_MAX {
+            // `start` is an index/, so >=
+            // all in mem
             self.mem.copy_from_slice(buf, start - DISK_MAX)
+        } else if start + (buf.len() / E::byte_len()) > DISK_MAX {
+            // end, exclusive, so >
+            // split between disk and mem
+            info!(
+                "Spanning copy_from_slice, buf.len={} (byte_len={}), start={}, DISK_MAX={}",
+                buf.len(),
+                E::byte_len(),
+                start,
+                DISK_MAX
+            );
+            self.disk
+                .copy_from_slice(&buf[0..(DISK_MAX * E::byte_len()) - start], start)?;
+            self.mem
+                .copy_from_slice(&buf[(DISK_MAX * E::byte_len()) - start..buf.len()], 0)
         } else {
+            // all on disk
             self.disk.copy_from_slice(buf, start)
         }
     }
@@ -56,7 +76,8 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn read_at(&self, index: usize) -> Result<E> {
-        if index > DISK_MAX {
+        if index >= DISK_MAX {
+            // index so >=
             self.mem.read_at(index - DISK_MAX)
         } else {
             self.disk.read_at(index)
@@ -64,7 +85,8 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn read_into(&self, index: usize, buf: &mut [u8]) -> Result<()> {
-        if index > DISK_MAX {
+        if index >= DISK_MAX {
+            // index so =>
             self.mem.read_into(index - DISK_MAX, buf)
         } else {
             self.disk.read_into(index, buf)
@@ -76,7 +98,8 @@ impl<E: Element> Store<E> for MultiStore<E> {
     }
 
     fn read_range(&self, r: Range<usize>) -> Result<Vec<E>> {
-        if r.start > DISK_MAX {
+        if r.start >= DISK_MAX {
+            // start is an index, so >=
             // entire range is in mem
             let nr = Range {
                 start: r.start - DISK_MAX,
@@ -84,6 +107,11 @@ impl<E: Element> Store<E> for MultiStore<E> {
             };
             self.mem.read_range(nr)
         } else if r.end > DISK_MAX {
+            // end exclusive, so >
+            info!(
+                "Spanning range_read, start={}, end={}, DISK_MAX={}",
+                r.start, r.end, DISK_MAX
+            );
             // split across disk and mem
             let nrdisk = Range {
                 start: r.start,
@@ -93,7 +121,7 @@ impl<E: Element> Store<E> for MultiStore<E> {
                 start: 0,
                 end: r.end - DISK_MAX,
             };
-            let rdisk = self.mem.read_range(nrdisk).unwrap();
+            let rdisk = self.disk.read_range(nrdisk).unwrap();
             let rmem = self.mem.read_range(nrmem).unwrap();
             let mut rv = Vec::with_capacity(r.end - r.start);
             rv.extend(rdisk);

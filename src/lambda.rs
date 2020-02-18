@@ -5,8 +5,8 @@ use std::str::FromStr;
 
 use lambda_runtime::error::HandlerError;
 use lambda_runtime::{lambda, Context};
-use serde_derive::{Deserialize, Serialize};
 use log::info;
+use serde_derive::{Deserialize, Serialize};
 
 use rusoto_core::credential::{AwsCredentials, StaticProvider};
 use rusoto_core::region::Region;

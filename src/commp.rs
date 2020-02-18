@@ -140,12 +140,12 @@ fn padded<R: Sized + io::Read>(inp: &mut R, size: u64) -> PadReader<&mut R> {
 pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
-) -> Result<CommP, std::io::Error> {
+) -> Result<CommP, anyhow::Error> {
     let pad_reader = padded(inp, size);
     let padded_size = pad_reader.padsize;
 
     let info = generate_piece_commitment(pad_reader, UnpaddedBytesAmount(padded_size as u64))
-        .expect("failed to generate piece commitment");
+        .context("failed to generate piece commitment")?;
 
     Ok(CommP {
         padded_size: padded_size as u64,
