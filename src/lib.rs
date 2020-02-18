@@ -1,8 +1,7 @@
 use std::cmp;
 use std::convert::TryFrom;
-use std::fs::File;
 use std::io;
-use std::io::{BufReader, Cursor, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, Cursor, Read, Seek, SeekFrom};
 
 use filecoin_proofs::constants::DefaultPieceHasher;
 use filecoin_proofs::fr32::write_padded;
