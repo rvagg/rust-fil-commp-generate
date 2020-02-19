@@ -15,12 +15,14 @@ cmdpid=$!
 
 sleep 0.2
 peakmem=0
+peakrss=0
 peakdisk=0
 while kill -0 $cmdpid >& /dev/null
 do
-  mem=$(cat "/proc/${cmdpid}/status" | grep VmRSS | awk '{print $2}')
-  if (( $mem > $peakmem )); then
-    peakmem=$mem
+  peakmem=$(cat "/proc/${cmdpid}/status" | grep VmPeak | awk '{print $2}')
+  rss=$(cat "/proc/${cmdpid}/status" | grep VmRSS | awk '{print $2}')
+  if (( $rss > $peakrss )); then
+    peakrss=$rss
   fi
   disk=$(df $tmpfs --output=used | tail -1)
   if (( $disk > $peakdisk )); then
@@ -32,3 +34,4 @@ done
 echo "Took ~$(expr $(date +'%s') - $startts) seconds"
 echo "Peak disk $(expr $peakdisk / 1024) Mb"
 echo "Peak mem $(expr $peakmem / 1024) Mb"
+echo "Peak mem RSS $(expr $peakrss / 1024) Mb"
