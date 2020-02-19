@@ -13,6 +13,7 @@ use storage_proofs::hasher::{Domain, Hasher};
 use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
 use storage_proofs::util::NODE_SIZE;
 
+use generic_array::typenum;
 use log::info;
 
 use anyhow::{Context, Result};
@@ -20,7 +21,7 @@ use anyhow::{Context, Result};
 mod multistore;
 
 type VecStore<E> = merkletree::store::VecStore<E>;
-pub type MerkleTree<T, A> = merkletree::merkle::MerkleTree<T, A, VecStore<T>>;
+pub type MerkleTree<T, A> = merkletree::merkle::MerkleTree<T, A, VecStore<T>, typenum::U2>;
 pub type MerkleTreeMultiStore<T, A> =
     merkletree::merkle::MerkleTree<T, A, multistore::MultiStore<T>>;
 

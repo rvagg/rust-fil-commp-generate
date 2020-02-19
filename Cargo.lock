@@ -142,9 +142,9 @@ checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 
 [[package]]
 name = "bellperson"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4397533f3d28e7da9d968fa5df091474b9cbff0b03aa3370fbbc939d9b582805"
+checksum = "e640126c9941b265bf572dd8f4d3f4c0c109ed9bb92d7991813add6883a3425b"
 dependencies = [
  "bit-vec",
  "blake2s_simd",
@@ -165,6 +165,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rayon",
+ "thiserror",
 ]
 
 [[package]]
@@ -377,6 +378,7 @@ dependencies = [
  "bytesize",
  "filecoin-proofs",
  "flexi_logger",
+ "generic-array 0.13.2",
  "hex",
  "lambda_runtime",
  "log",
@@ -810,7 +812,7 @@ dependencies = [
  "storage-proofs",
  "tar",
  "tee",
- "tempfile",
+ "typenum",
 ]
 
 [[package]]
@@ -956,13 +958,14 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
 name = "groupy"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b3d552a2bd441c56ebf8e24e023a61646fb548a4a50a0dc949d333585790248"
+checksum = "2d38f1bec17d75a7c30b754cd74db6e7cb5927529021ced14fbd622411c04d8b"
 dependencies = [
  "fff",
  "rand 0.7.3",
  "rand_xorshift 0.2.0",
+ "thiserror",
 ]
 
 [[package]]
@@ -991,18 +994,18 @@ checksum = "20d6a47d6e4b8559729f58287efa8e6f767e603c068fea7a5e4d9f1cebe2bebb"
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eff2656d88f158ce120947499e971d743c05dbcbed62e5bd2f38f1698bbc3772"
+checksum = "e2c55f143919fbc0bc77e427fe2d74cf23786d7c1875666f2fde3ac3c659bb67"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "hex"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76cdda6bf525062a0c9e8f14ee2b37935c86b8efb6c8b69b3c83dfb518a914af"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 
 [[package]]
 name = "hmac"
@@ -1324,19 +1327,21 @@ dependencies = [
 
 [[package]]
 name = "merkletree"
-version = "0.15.2"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e80f46f9aa2bf72eb821faf5ba32d406f4cb434867d7fafc5c00c6088765df77"
+checksum = "97b1d33729d40ce23c63c88ffb8e32fa84668afb353738b357a4ec251db5f541"
 dependencies = [
  "anyhow",
  "arrayref",
  "log",
  "memmap",
  "positioned-io",
+ "rand 0.7.3",
  "rayon",
  "serde 1.0.104",
  "tempdir",
  "tempfile",
+ "typenum",
 ]
 
 [[package]]
@@ -1448,9 +1453,9 @@ dependencies = [
 
 [[package]]
 name = "neptune"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69940c1a9a0d2b051ec566a197140a849b0ba1f01d6a8ab8b256e4324f281395"
+checksum = "9a0ad2cad3bf4fca5e73c35dfddcaf2c89230667064a879097fe45d14686bf58"
 dependencies = [
  "bellperson",
  "blake2s_simd",
@@ -2285,9 +2290,9 @@ dependencies = [
 
 [[package]]
 name = "scopeguard"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
+checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "security-framework"
@@ -2540,7 +2545,6 @@ dependencies = [
  "tempfile",
  "thiserror",
  "toml 0.5.6",
- "typenum",
 ]
 
 [[package]]
@@ -2675,18 +2679,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "205684fd018ca14432b12cce6ea3d46763311a571c3d294e71ba3f01adcf1aad"
+checksum = "ee14bf8e6767ab4c687c9e8bc003879e042a96fd67a3ba5934eadb6536bef4db"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.10"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e4d2e50ca050ed44fb58309bdce3efa79948f84f9993ad1978de5eebdce5a7"
+checksum = "a7b51e1fbc44b5a0840be594fbc0f960be09050f2617e61e6aa43bef97cd3ef4"
 dependencies = [
  "proc-macro2 1.0.8",
  "quote 1.0.2",
