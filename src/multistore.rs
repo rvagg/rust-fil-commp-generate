@@ -18,7 +18,7 @@ pub struct MultiStore<E: Element> {
 const DISK_MAX: usize = 262144 * 48; // ~375Mb
 
 impl<E: Element> Store<E> for MultiStore<E> {
-    fn new_with_config(size: usize, _config: StoreConfig) -> Result<Self> {
+    fn new_with_config(size: usize, _branches: usize, _config: StoreConfig) -> Result<Self> {
         Self::new(size)
     }
 
@@ -63,7 +63,12 @@ impl<E: Element> Store<E> for MultiStore<E> {
         }
     }
 
-    fn new_from_slice_with_config(size: usize, data: &[u8], _config: StoreConfig) -> Result<Self> {
+    fn new_from_slice_with_config(
+        size: usize,
+        _branches: usize,
+        data: &[u8],
+        _config: StoreConfig,
+    ) -> Result<Self> {
         Self::new_from_slice(size, &data)
     }
 
@@ -71,7 +76,7 @@ impl<E: Element> Store<E> for MultiStore<E> {
         unimplemented!("nope, too hard");
     }
 
-    fn new_from_disk(_size: usize, _config: &StoreConfig) -> Result<Self> {
+    fn new_from_disk(_size: usize, _branches: usize, _config: &StoreConfig) -> Result<Self> {
         unimplemented!("Cannot load a MultiStore from disk");
     }
 
@@ -141,7 +146,12 @@ impl<E: Element> Store<E> for MultiStore<E> {
         false
     }
 
-    fn compact(&mut self, _config: StoreConfig, _store_version: u32) -> Result<bool> {
+    fn compact(
+        &mut self,
+        _branches: usize,
+        _config: StoreConfig,
+        _store_version: u32,
+    ) -> Result<bool> {
         Ok(true)
     }
 
