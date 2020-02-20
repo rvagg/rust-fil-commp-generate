@@ -23,7 +23,7 @@ mod multistore;
 type VecStore<E> = merkletree::store::VecStore<E>;
 pub type MerkleTree<T, A> = merkletree::merkle::MerkleTree<T, A, VecStore<T>, typenum::U2>;
 pub type MerkleTreeMultiStore<T, A> =
-    merkletree::merkle::MerkleTree<T, A, multistore::MultiStore<T>>;
+    merkletree::merkle::MerkleTree<T, A, multistore::MultiStore<T>, typenum::U2>;
 
 pub struct CommP {
     pub padded_size: u64,
@@ -55,16 +55,18 @@ impl<R: io::Read> io::Read for PadReader<R> {
     }
 }
 
+fn piece_size(size: u64, next: bool) -> u64 {
+  1u64 << (64 - size.leading_zeros() + if next { 1 } else { 0 })
+}
+
 // logic partly copied from Lotus' PadReader which is also in go-fil-markets
 // figure out how big this piece will be when padded
 fn padded_size(size: u64) -> u64 {
-    let logv = 64 - size.leading_zeros();
-    let sect_size = (1u64) << logv;
-    let bound = u64::from(UnpaddedBytesAmount::from(SectorSize(sect_size)));
+    let bound = u64::from(UnpaddedBytesAmount::from(SectorSize(piece_size(size, false))));
     if size <= bound {
         bound
     } else {
-        u64::from(UnpaddedBytesAmount::from(SectorSize(1 << (logv + 1))))
+        u64::from(UnpaddedBytesAmount::from(SectorSize(piece_size(size, true))))
     }
 }
 
@@ -148,7 +150,7 @@ pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
 
     Ok(CommP {
         padded_size: padded_size as u64,
-        piece_size: u64::from(info.size),
+        piece_size: piece_size(size, false),
         bytes: info.commitment,
     })
 }
@@ -166,17 +168,17 @@ pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
     let mut temp_piece_file = Cursor::new(&mut data);
 
     // send the source through the preprocessor, writing output to temp file
-    let piece_size =
+    let uba =
         UnpaddedBytesAmount(write_padded(pad_reader, &mut temp_piece_file).unwrap() as u64);
     temp_piece_file.seek(SeekFrom::Start(0))?;
     let commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
         &mut temp_piece_file,
-        PaddedBytesAmount::from(piece_size).into(),
+        PaddedBytesAmount::from(uba).into(),
     );
 
     Ok(CommP {
         padded_size: padded_size as u64,
-        piece_size: u64::from(piece_size),
+        piece_size: piece_size(size, false),
         bytes: commitment.unwrap(),
     })
 }
@@ -199,9 +201,9 @@ pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
     let mut temp_piece_file = Cursor::new(&mut data);
 
     // send the source through the preprocessor, writing output to temp file
-    let piece_size =
+    let uba =
         UnpaddedBytesAmount(write_padded(pad_reader, &mut temp_piece_file).unwrap() as u64);
-    info!("Piece size = {:?}", piece_size);
+    info!("Piece size = {:?}", uba);
     temp_piece_file.seek(SeekFrom::Start(0))?;
 
     let commitment = if multistore {
@@ -210,7 +212,7 @@ pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
             Cursor<&mut Vec<u8>>,
         >(
             &mut temp_piece_file,
-            PaddedBytesAmount::from(piece_size).into(),
+            PaddedBytesAmount::from(uba).into(),
         )
         .unwrap()
     } else {
@@ -219,14 +221,14 @@ pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
             Cursor<&mut Vec<u8>>,
         >(
             &mut temp_piece_file,
-            PaddedBytesAmount::from(piece_size).into(),
+            PaddedBytesAmount::from(uba).into(),
         )
         .unwrap()
     };
 
     Ok(CommP {
         padded_size: padded_size as u64,
-        piece_size: u64::from(piece_size),
+        piece_size: piece_size(size, false),
         bytes: commitment,
     })
 }

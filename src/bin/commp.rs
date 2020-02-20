@@ -5,12 +5,22 @@
 use std::env;
 use std::fs::File;
 
-use bytesize;
+use num_format::{SystemLocale, Buffer};
 use flexi_logger::Logger;
 use hex;
 
 fn usage() {
     print!("Usage: commp [-fp|-sp|-spl] <file>\n");
+}
+
+// srsly? all this just to print a size nicely with comma grouping?
+fn to_mb (size : u64) -> String {
+  let locale = SystemLocale::default().unwrap();
+  let r = (((size as f64) / 1024.0 / 1024.0) * 100.0).round() / 100.0;
+  let mut buf = Buffer::default();
+  buf.write_formatted(&(r.floor() as i64), &locale);
+  let rem = (r.fract() * 100.0).round() as i64;
+  return (buf.as_str().to_owned() + "." + &rem.to_string() + " Mb").to_string();
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,11 +51,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     print!(
-        "{}\n\tSize: {}\n\tPadded Size: {}\n\tPiece Size: {}\n\tCommP {}\n",
+        "{}:\n\tSize: {}\n\tPadded Size: {}\n\tPiece Size: {}\n\tCommP {}\n",
         filename,
-        bytesize::ByteSize::b(file_size),
-        bytesize::ByteSize::b(commp.padded_size),
-        bytesize::ByteSize::b(commp.piece_size),
+        to_mb(file_size),
+        to_mb(commp.padded_size),
+        to_mb(commp.piece_size),
         hex::encode(commp.bytes)
     );
 
