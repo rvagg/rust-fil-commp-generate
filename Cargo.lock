@@ -812,6 +812,7 @@ dependencies = [
  "storage-proofs",
  "tar",
  "tee",
+ "tempfile",
  "typenum",
 ]
 
