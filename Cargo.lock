@@ -1425,7 +1425,6 @@ version = "0.16.1"
 dependencies = [
  "anyhow",
  "arrayref",
- "hex",
  "log",
  "memmap",
  "positioned-io",

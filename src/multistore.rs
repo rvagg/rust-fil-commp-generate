@@ -25,7 +25,7 @@ impl<E: Element> Store<E> for MultiStore<E> {
     fn new(size: usize) -> Result<Self> {
         Ok(MultiStore {
             disk: DiskStore::new(DISK_MAX).unwrap(),
-            mem: VecStore::new(size - DISK_MAX).unwrap(),
+            mem: VecStore::new(if size < DISK_MAX { size } else { size - DISK_MAX }).unwrap(),
         })
     }
 
