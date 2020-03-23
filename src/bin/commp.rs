@@ -39,11 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if &args[1] == "-fp" {
         commp = commp::generate_commp_filecoin_proofs(&mut file, file_size).unwrap();
-    }
-    /* else if &args[1] == "-sp" {
+    } else if &args[1] == "-sp" {
         commp = commp::generate_commp_storage_proofs(&mut file, file_size).unwrap();
-    } */
-    else if &args[1] == "-spl" {
+    } else if &args[1] == "-spl" {
         commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, false).unwrap();
     } else if &args[1] == "-splm" {
         commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, true).unwrap();

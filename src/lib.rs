@@ -4,15 +4,13 @@ use std::io;
 use std::io::{BufReader, Read};
 
 use filecoin_proofs::constants::DefaultPieceHasher;
-// use filecoin_proofs::fr32::write_padded;
+use filecoin_proofs::pad_reader::PadReader;
 use filecoin_proofs::{
     generate_piece_commitment, PaddedBytesAmount, SectorSize, UnpaddedBytesAmount,
 };
 use storage_proofs::fr32::Fr32Ary;
-// use storage_proofs::pad_reader::PadReader;
 use storage_proofs::hasher::{Domain, Hasher};
-// use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
-use filecoin_proofs::pad_reader::PadReader;
+use storage_proofs::pieces::generate_piece_commitment_bytes_from_source;
 use storage_proofs::util::NODE_SIZE;
 
 use merkletree::merkle;
@@ -24,15 +22,20 @@ use anyhow::{Context, Result};
 
 mod multistore;
 
+// how filecoin_proofs uses it if we go directly through it:
+//
 // type DiskStore<E> = merkletree::store::DiskStore<E>;
+// type DiskMerkleTree<T, A, U> = merkle::MerkleTree<T, A, DiskStore<T>, U>;
+// type BinaryDiskMerkleTree<T, A> = DiskMerkleTree<T, A, typenum::U2>;
+
+// if we want to control merklisation resource usage:
+
 type VecStore<E> = merkletree::store::VecStore<E>;
 type MultiStore<E> = multistore::MultiStore<E>;
 
-// type DiskMerkleTree<T, A, U> = merkle::MerkleTree<T, A, DiskStore<T>, U>;
 type VecMerkleTree<T, A, U> = merkle::MerkleTree<T, A, VecStore<T>, U>;
 type MultiMerkleTree<T, A, U> = merkle::MerkleTree<T, A, MultiStore<T>, U>;
 
-// type BinaryDiskMerkleTree<T, A> = DiskMerkleTree<T, A, typenum::U2>;
 type BinaryVecMerkleTree<T, A> = VecMerkleTree<T, A, typenum::U2>;
 type BinaryMultiMerkleTree<T, A> = MultiMerkleTree<T, A, typenum::U2>;
 
@@ -153,14 +156,21 @@ fn base2_padded<R: Sized + io::Read>(inp: &mut R, size: u64) -> Base2PadReader<&
     base2_pad_reader
 }
 
+/*
+ * How you'd do it through filecoin_proofs::generate_piece_commitment()
+ * which would be the more "correct" way to call in because most things
+ * are done for you.
+ */
 #[allow(dead_code)]
 pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
 ) -> Result<CommP, anyhow::Error> {
+    // zero-pad the end of the input so we'll end up with a ^2 size once fr32 padded.
     let base2_pad_reader = base2_padded(inp, size);
     let padded_size = base2_pad_reader.padsize;
 
+    // filecoin_proofs
     let info = generate_piece_commitment(base2_pad_reader, UnpaddedBytesAmount(padded_size as u64))
         .context("failed to generate piece commitment")?;
 
@@ -172,24 +182,29 @@ pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
 }
 
 /*
+ * A slightly more indirect route, going through
+ * storage_proofs::generate_piece_commitment_bytes_from_source(),
+ * which is what filecoin_proofs::generate_piece_commitment() uses
+ * except that it also adds the fr32 pading for you. Here we do it
+ * ourselves but end up in the same place, so this is just a plain
+ * reimplementation of the filecoin_proofs method above.
+ */
 #[allow(dead_code)]
 pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
 ) -> Result<CommP, std::io::Error> {
+    // zero-pad the end of the input so we'll end up with a ^2 size once fr32 padded.
     let base2_pad_reader = base2_padded(inp, size);
     let padded_size = base2_pad_reader.padsize;
 
-    // Grow the vector big enough so that it doesn't grow it automatically
-    let mut data = Vec::with_capacity((padded_size as u64 as f64 * 1.01) as usize);
-    let mut temp_piece_file = Cursor::new(&mut data);
+    let uba = UnpaddedBytesAmount(padded_size as u64);
 
-    // send the source through the preprocessor, writing output to temp file
-    let uba =
-        UnpaddedBytesAmount(write_padded(base2_pad_reader, &mut temp_piece_file).unwrap() as u64);
-    temp_piece_file.seek(SeekFrom::Start(0))?;
+    let mut pad_reader = PadReader::new(base2_pad_reader);
+
+    // storage_proofs
     let commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
-        &mut temp_piece_file,
+        &mut pad_reader,
         PaddedBytesAmount::from(uba).into(),
     );
 
@@ -199,32 +214,33 @@ pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
         bytes: commitment.unwrap(),
     })
 }
-*/
 
+/*
+ * Now we get a little whacky. If we use the main external APIs as above
+ * then we have to let the filecoin_proofs library handle merklization for
+ * us. It's opinionated about how it handles caching for parallelisation,
+ * so we have to put up with large tmpfiles during that process.
+ * Approximately 2x the size of the input file will be used in termporary
+ * cache file storage during calculation. In this case, we reimplement
+ * some of what storage_proofs::generate_piece_commitment_bytes_from_source()
+ * is doing for us but we use our own `MerkleTree` to do the work which is
+ * backed by the caching store that we want. When `multistore` is false, it'll
+ * use a `VecStore` that ships with the merkle_light library that only uses
+ * RAM. When `multistore` is true, we use our own (hacky?) `MultiStore` that
+ * splits between RAM and disk. The ratio was originally chosen to help fit
+ * ~<1G pieces into the resources available on an AWS Lambda instance. The new
+ * fr32 streaming padding has improved things so this is currently unnecessary.
+ */
 pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
     multistore: bool,
 ) -> Result<CommP, std::io::Error> {
+    // zero-pad the end of the input so we'll end up with a ^2 size once fr32 padded.
     let base2_pad_reader = base2_padded(inp, size);
     let padded_size = base2_pad_reader.padsize;
-    let uba = UnpaddedBytesAmount(padded_size as u64);
-    /*
-    // Grow the vector big enough so that it doesn't grow it automatically
-    let fr32_capacity = (padded_size as f64) * 1.008; // rounded up extra space for 2 in every 254 bits
-    info!(
-        "Padded size = {}, allocating vector with fr32 size = {}",
-        padded_size, fr32_capacity
-    );
-    let mut data = Vec::with_capacity(fr32_capacity as usize);
-    let mut temp_piece_file = Cursor::new(&mut data);
 
-    // send the source through the preprocessor, writing output to temp file
-    let uba =
-        UnpaddedBytesAmount(write_padded(pad_reader, &mut temp_piece_file).unwrap() as u64);
-    info!("Piece size = {:?}", uba);
-    temp_piece_file.seek(SeekFrom::Start(0))?;
-    */
+    let uba = UnpaddedBytesAmount(padded_size as u64);
 
     let mut pad_reader = PadReader::new(base2_pad_reader);
 
