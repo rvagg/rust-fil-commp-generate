@@ -4,7 +4,7 @@ use std::io;
 use std::io::{BufReader, Read};
 
 use filecoin_proofs::constants::DefaultPieceHasher;
-use filecoin_proofs::pad_reader::PadReader;
+use filecoin_proofs::fr32_reader::Fr32Reader;
 use filecoin_proofs::{
     generate_piece_commitment, PaddedBytesAmount, SectorSize, UnpaddedBytesAmount,
 };
@@ -73,7 +73,7 @@ fn piece_size(size: u64, next: bool) -> u64 {
     1u64 << (64 - size.leading_zeros() + if next { 1 } else { 0 })
 }
 
-// logic partly copied from Lotus' PadReader which is also in go-fil-markets
+// logic partly copied from Lotus' Fr32Reader which is also in go-fil-markets
 // figure out how big this piece will be when padded
 fn padded_size(size: u64) -> u64 {
     let bound = u64::from(UnpaddedBytesAmount::from(SectorSize(piece_size(
@@ -161,7 +161,6 @@ fn base2_padded<R: Sized + io::Read>(inp: &mut R, size: u64) -> Base2PadReader<&
  * which would be the more "correct" way to call in because most things
  * are done for you.
  */
-#[allow(dead_code)]
 pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
@@ -189,7 +188,6 @@ pub fn generate_commp_filecoin_proofs<R: Sized + io::Read>(
  * ourselves but end up in the same place, so this is just a plain
  * reimplementation of the filecoin_proofs method above.
  */
-#[allow(dead_code)]
 pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
     inp: &mut R,
     size: u64,
@@ -200,7 +198,7 @@ pub fn generate_commp_storage_proofs<R: Sized + io::Read>(
 
     let uba = UnpaddedBytesAmount(padded_size as u64);
 
-    let mut pad_reader = PadReader::new(base2_pad_reader);
+    let mut pad_reader = Fr32Reader::new(base2_pad_reader);
 
     // storage_proofs
     let commitment = generate_piece_commitment_bytes_from_source::<DefaultPieceHasher>(
@@ -242,7 +240,7 @@ pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
 
     let uba = UnpaddedBytesAmount(padded_size as u64);
 
-    let mut pad_reader = PadReader::new(base2_pad_reader);
+    let mut pad_reader = Fr32Reader::new(base2_pad_reader);
 
     let commitment = if multistore {
         generate_piece_commitment_bytes_from_source_with_multistore::<DefaultPieceHasher>(
