@@ -69,7 +69,7 @@ fn commp_handler(request: CommPRequest, _c: Context) -> Result<CommPResponse, Ha
 
     let mut stream = result.body.unwrap().into_blocking_read();
 
-    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size, false).unwrap();
+    let commp = commp::generate_commp_storage_proofs_mem(&mut stream, size).unwrap();
 
     Ok(CommPResponse {
         region: request.region,

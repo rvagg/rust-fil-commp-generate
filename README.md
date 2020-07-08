@@ -10,12 +10,16 @@ See [src/commp.rs](src/commp.rs) for the most interesting code, which iteracts w
 
 Requires:
 
-* Rust nightly for local builds (it's installed in Docker for Lambda builds)
+* Rust 1.43.1 or later
 * A checked out copy of [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) at `../rust-fil-proofs/` relative to this directory.
 
 `make commp_local`
 
-Builds a binary in `target/release/commp` that can be run against a file. The binary takes a file name prefixed with a CommP generation method, one of `-fp` (via a standard API exposed by filecoin_proofs), `-sp` (via a more internal API in storage_proofs) or `-spl` (via a method that reimplements large portions of the storage_proofs method but uses memory caching rather than disk).
+Builds a binary in `target/release/commp` that can be run against a file. There is a sample car file in tests/fixtures you can try it on:
+
+```shell
+target/release/commp tests/fixtures/bafyreidigczbx3d3fbpabihjh3lmeoppdlriaipuityslbl4kgaud6bkci.car
+```
 
 ### Lambda
 
