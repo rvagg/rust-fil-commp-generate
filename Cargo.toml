@@ -7,7 +7,7 @@ edition = "2018"
 filecoin-proofs = { path = "../rust-fil-proofs/filecoin-proofs" }
 storage-proofs = { path = "../rust-fil-proofs/storage-proofs" }
 hex = "0.4"
-merkletree = { path = "../merkle_light" }
+merkletree = "0.16.4"
 anyhow = "1.0"
 num-format = { version = "0.4", features = ["with-system-locale"] }
 lambda_runtime = "0.2"
