@@ -7,20 +7,14 @@ use std::fs::File;
 
 use flexi_logger::Logger;
 use hex;
-use num_format::{Buffer, SystemLocale};
 
 fn usage() {
     print!("Usage: commp [-fp|-sp|-spl] <file>\n");
 }
 
-// srsly? all this just to print a size nicely with comma grouping?
 fn to_mb(size: u64) -> String {
-    let locale = SystemLocale::default().unwrap();
     let r = (((size as f64) / 1024.0 / 1024.0) * 100.0).round() / 100.0;
-    let mut buf = Buffer::default();
-    buf.write_formatted(&(r.floor() as i64), &locale);
-    let rem = (r.fract() * 100.0).round() as i64;
-    return (buf.as_str().to_owned() + "." + &rem.to_string() + " Mb").to_string();
+    format!("{} Mb", r)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

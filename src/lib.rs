@@ -262,3 +262,29 @@ pub fn generate_commp_storage_proofs_mem<R: Sized + io::Read>(
         bytes: commitment,
     })
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::generate_commp_storage_proofs_mem;
+    use std::fs::File;
+
+    #[test]
+    fn generate_succeeds() {
+        let mut file =
+            File::open("../bafyreidigczbx3d3fbpabihjh3lmeoppdlriaipuityslbl4kgaud6bkci.car")
+                .unwrap();
+        let file_size = file.metadata().unwrap().len();
+        let commp = generate_commp_storage_proofs_mem(&mut file, file_size, false).unwrap();
+        assert_eq!(commp.padded_size, 2080768);
+        assert_eq!(commp.piece_size, 2097152);
+        assert_eq!(commp.bytes.len(), 32);
+        assert_eq!(
+            commp.bytes,
+            [
+                222, 177, 39, 25, 67, 163, 107, 5, 68, 132, 31, 203, 228, 182, 208, 97, 57, 177,
+                182, 227, 179, 213, 117, 201, 82, 197, 192, 106, 191, 85, 6, 9
+            ]
+        );
+    }
+}
