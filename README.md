@@ -11,7 +11,9 @@ See [src/commp.rs](src/commp.rs) for the most interesting code, which iteracts w
 Requires:
 
 * Rust 1.43.1 or later
-* A checked out copy of [rust-fil-proofs](https://github.com/filecoin-project/rust-fil-proofs) at `../rust-fil-proofs/` relative to this directory.
+* OpenCL libraries (apt-get -y install ocl-icd-opencl-dev)
+
+See .devcontainer for a Dockerfile image that includes all dependencies and Visual Studio Code Remote Containers configuration 
 
 `make commp_local`
 
