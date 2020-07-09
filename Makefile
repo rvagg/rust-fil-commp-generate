@@ -9,6 +9,7 @@ commp_local:
 docker_image:
 	cd docker && docker build -t $(DOCKER_TAG) .
 	mkdir -p $(PWD)/docker_cache/cargo/
+	mkdir -p $(PWD)/docker_cache/target/
 	docker run \
 		-ti \
 		--rm \
@@ -30,7 +31,7 @@ commp_lambda:
 
 commp_lambda_in_docker:
 	rm -f $(CLEAN)
-	cargo build --bin bootstrap --release
+	CFLAGS=-std=c99 cargo build --bin bootstrap --release
 	mkdir -p target/release/lib/
 	cp -a /usr/lib64/libOpenCL* target/release/lib/
 	cd target/release/ &&	zip ../../commp_lambda.zip -r bootstrap lib/

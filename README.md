@@ -26,3 +26,4 @@ target/release/commp tests/fixtures/bafyreidigczbx3d3fbpabihjh3lmeoppdlriaipuity
 `make docker_image` to make the Docker image tagged `commp_lambda_build_rs` which is suitable for building a Lambda package.
 
 `make commp_lambda` to build a commp_lambda.zip that can be added as a custom Lambda function.
+
