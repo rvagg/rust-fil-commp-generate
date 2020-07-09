@@ -157,9 +157,10 @@ mod tests {
 
     #[test]
     fn generate_succeeds() {
-        let mut file =
-            File::open("../bafyreidigczbx3d3fbpabihjh3lmeoppdlriaipuityslbl4kgaud6bkci.car")
-                .unwrap();
+        let mut file = File::open(
+            "tests/fixtures/bafyreidigczbx3d3fbpabihjh3lmeoppdlriaipuityslbl4kgaud6bkci.car",
+        )
+        .unwrap();
         let file_size = file.metadata().unwrap().len();
         let commp = generate_commp_storage_proofs_mem(&mut file, file_size).unwrap();
         assert_eq!(commp.padded_size, 2080768);
