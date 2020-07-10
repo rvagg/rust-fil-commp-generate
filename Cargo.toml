@@ -4,12 +4,11 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-filecoin-proofs = { path = "../rust-fil-proofs/filecoin-proofs" }
-storage-proofs = { path = "../rust-fil-proofs/storage-proofs" }
+filecoin-proofs = "^4"
+storage-proofs = "^4"
 hex = "0.4"
-merkletree = "0.16.4"
+merkletree = "0.20.0"
 anyhow = "1.0"
-num-format = { version = "0.4", features = ["with-system-locale"] }
 lambda_runtime = "0.2"
 serde = "^1"
 serde_json = "^1"
@@ -23,3 +22,4 @@ generic-array = "0.13"
 [[bin]]
 name = "bootstrap"
 path = "src/bin/lambda.rs"
+

@@ -7,48 +7,29 @@ use std::fs::File;
 
 use flexi_logger::Logger;
 use hex;
-use num_format::{Buffer, SystemLocale};
 
 fn usage() {
-    print!("Usage: commp [-fp|-sp|-spl] <file>\n");
+    print!("Usage: commp <file>\n");
 }
 
-// srsly? all this just to print a size nicely with comma grouping?
 fn to_mb(size: u64) -> String {
-    let locale = SystemLocale::default().unwrap();
     let r = (((size as f64) / 1024.0 / 1024.0) * 100.0).round() / 100.0;
-    let mut buf = Buffer::default();
-    buf.write_formatted(&(r.floor() as i64), &locale);
-    let rem = (r.fract() * 100.0).round() as i64;
-    return (buf.as_str().to_owned() + "." + &rem.to_string() + " Mb").to_string();
+    format!("{} Mb", r)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     Logger::with_str("info").start().unwrap();
 
     let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
+    if args.len() < 2 {
         usage();
         return Err(From::from("Not enough arguments".to_string()));
     }
-    let filename = &args[2];
+    let filename = &args[1];
     let mut file = File::open(filename)?;
     let file_size = file.metadata().unwrap().len();
 
-    let commp: commp::CommP;
-
-    if &args[1] == "-fp" {
-        commp = commp::generate_commp_filecoin_proofs(&mut file, file_size).unwrap();
-    } else if &args[1] == "-sp" {
-        commp = commp::generate_commp_storage_proofs(&mut file, file_size).unwrap();
-    } else if &args[1] == "-spl" {
-        commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, false).unwrap();
-    } else if &args[1] == "-splm" {
-        commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size, true).unwrap();
-    } else {
-        usage();
-        return Err(From::from("Supply one of -fp (filecoin-proofs), -sp (storage-proofs) or -spl (storage-proofs local / reimplemented)".to_string()));
-    }
+    let commp = commp::generate_commp_storage_proofs_mem(&mut file, file_size).unwrap();
 
     print!(
         "{}:\n\tSize: {}\n\tPadded Size: {}\n\tPiece Size: {}\n\tCommP {}\n",
